@@ -1,4 +1,5 @@
 # instanceof 实现
+```
 function instance_of(L, R) {         // L 表示instanceof左边，R 表示instanceof右边
     let O = R.prototype;         // 取 R 的显示原型
     L = L.__proto__;             // 取 L 的隐式原型
@@ -8,4 +9,5 @@ function instance_of(L, R) {         // L 表示instanceof左边，R 表示insta
         L = L.__proto__;
     }
 }
+```
 
