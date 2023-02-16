@@ -9,6 +9,7 @@
 基于上述两个场景遇到的问题，有一个很好的插件可以解决这个痛点————[vue-fragment](https://www.jianshu.com/p/bf034b04a5ac)
 
 使用说明：
+```
 1.下载插件：npm i -s vue-fragment
 2.下载好插件后，安装配置插件：
 （1）import Fragment from 'vue-fragment'
@@ -18,5 +19,5 @@
 （1）或（2）选择一个就行，然后直接把选择的这个放到vue项目的文件入口（一般是main.js）文件里面
 3.配置安装好后，最后就是使用该插件：
 只需要在你写组件的文件里面，把你之前不想用的div或者其它根元素换成fragment即可；
-
+```
 详细操作见上方链接
