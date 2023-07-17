@@ -111,10 +111,15 @@ remark:在webpack的mode被设置为'development'的情况下，这种通过按�
 举个例子：
 就那上面这段代码来说，假如我引用了x这个依赖包，但实际上我只是调用了这个x依赖包里面的a方法的话，我们希望的时候，在打包的时候只是将a方法给打包进去，x依赖包里面其它没有用到的方法需要通通将它给干掉，但实际上如果我们只是用上述说的默认的按需引入自动tree-shaking的方式的话，在最终打包的时候，还是会将b方法给打包进来。
 
+总结：
+1.要想使用tree-shaking，首先引入的依赖模块得用export的方式把你要引用的方法单独暴露出来，满足esmodule规范
+2.你必须按需引入你要使用的方法，不能直接引入整个包
+3.如果想tree-shaking掉其它文件以及当前文件里面除当前引用方法的其它无关方法，就只能在打包的时候，将打包模式设置为'production'
+
 ### webpack常用的插件plugin
 1.html-webpack-plugin：用于根据开发打包时提供的模板html文件去打包生成一个新的html文件到构建的打包目录里面
 2.copy-webpack-plugin：用于将目标文件夹复制到打包的文件夹下，通常用于将图片这些静态资源复制过去
-3.clean-webpack-plugin：用于在构建打包的时候，将之前的旧的打包文件删除清空
+3.clean-webpack-plugin：用于在构建打包的时候，将之前的旧的打包文件删除清空,但是在webpack5.20.0+以上的版本里面集成了该功能（可以通过在output里面增加一个clean的配置项，并将它设置为true即可）
 4.mini-css-extract-plugin：用于将项目中的css文件给分离出来，在打包的时候单独生成一个css文件夹用于放置这些分离出来的css文件，而不必再将所有的css打包到js文件里面，不过它要配合它自己的loader一起使用才行，以下是使用示例：
 ```
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
