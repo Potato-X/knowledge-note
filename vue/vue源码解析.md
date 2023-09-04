@@ -185,4 +185,183 @@ function defineReactive(obj, key, val, customSetter, shallow, mock){
 2.将methods里面的属性方法代理到vm上，后面直接通过vue实例去访问这些方法
 
 ### 初始化data initData
+这个就是直接初始化data里面的数据了，并且给data里面的数据都添加响应式
+#### 1.vue是如何将data上面的数据代理到vue示例上面的？
+在initData里面通过调用proxy(vm, "_data", key)这个方法来实现的，
+跟前面代理props一样，还是通过vue自己写的proxy这个方法去实现的，上代码：
+```
+function proxy(target, sourceKey, key) {
+    sharedPropertyDefinition.get = function proxyGetter() {
+        return this[sourceKey][key];
+    };
+    sharedPropertyDefinition.set = function proxySetter(val) {
+        this[sourceKey][key] = val;
+    };
+    Object.defineProperty(target, key, sharedPropertyDefinition);
+}
+```
+分析：就是给了一个中间的变量属性，然后将data的数据都存到_data这个属性里面，然后再在vm的实例上面，新增data里面存在的那些属性名，访问实例上面的这些属性的时候，就是通过读取或赋值刚刚那个中间属性_data里面的对应的属性名来实现的
+
+#### 2.如何给data里面的数据添加响应式的
+通过Observer这个构造函数来实现,Observer构造函数如下：
+```
+function Observer(value, shallow, mock) {
+    if (shallow === void 0) { shallow = false; }
+    if (mock === void 0) { mock = false; }
+    this.value = value;
+    this.shallow = shallow;
+    this.mock = mock;
+    // this.value = value
+    this.dep = mock ? mockDep : new Dep();
+    this.vmCount = 0;
+    def(value, '__ob__', this);
+    if (isArray(value)) {
+        if (!mock) {
+            if (hasProto) {
+                value.__proto__ = arrayMethods;
+                /* eslint-enable no-proto */
+            }
+            else {
+                    for (var i = 0, l = arrayKeys.length; i < l; i++) {
+                        var key = arrayKeys[i];
+                        def(value, key, arrayMethods[key]);
+                    }
+            }         
+            if (!shallow) {
+                this.observeArray(value);
+            }
+        }
+    }
+    else {
+        /**
+        * Walk through all properties and convert them into
+        * getter/setters. This method should only be called when
+        * value type is Object.
+        */
+        var keys = Object.keys(value);
+        for (var i = 0; i < keys.length; i++) {
+            var key = keys[i];
+            defineReactive(value, key, NO_INIITIAL_VALUE, undefined, shallow, mock);
+        }
+    }
+}
+```
+这里区分了当前需要响应的对象是数组还是其它类型的，如果是数组则还需要额外再处理下，我们先看不是数组的
+不是数组的这里，首先value就是我们刚刚传进来的data，这里是循环遍历了value，实际上就是循环遍历了data里面的属性，然后再将data里面的每个属性都执行defineReactive(value, key, NO_INIITIAL_VALUE, undefined, shallow, mock)，
+而这个defineReactive方法就是具体处理给每个属性添加响应式的方法，defineReactive方法定义如下：
+```
+  function defineReactive(obj, key, val, customSetter, shallow, mock) {
+      var dep = new Dep();
+      var property = Object.getOwnPropertyDescriptor(obj, key);
+      if (property && property.configurable === false) {
+          return;
+      }
+      // cater for pre-defined getter/setters
+      var getter = property && property.get;
+      var setter = property && property.set;
+      if ((!getter || setter) &&
+          (val === NO_INIITIAL_VALUE || arguments.length === 2)) {
+          val = obj[key];
+      }
+      var childOb = !shallow && observe(val, false, mock);
+      Object.defineProperty(obj, key, {
+          enumerable: true,
+          configurable: true,
+          get: function reactiveGetter() {
+              var value = getter ? getter.call(obj) : val;
+              if (Dep.target) {
+                  {
+                      dep.depend({
+                          target: obj,
+                          type: "get" /* TrackOpTypes.GET */,
+                          key: key
+                      });
+                  }
+                  if (childOb) {
+                      childOb.dep.depend();
+                      if (isArray(value)) {
+                          dependArray(value);
+                      }
+                  }
+              }
+              return isRef(value) && !shallow ? value.value : value;
+          },
+          set: function reactiveSetter(newVal) {
+              var value = getter ? getter.call(obj) : val;
+              if (!hasChanged(value, newVal)) {
+                  return;
+              }
+              if (customSetter) {
+                  customSetter();
+              }
+              if (setter) {
+                  setter.call(obj, newVal);
+              }
+              else if (getter) {
+                  // #7981: for accessor properties without setter
+                  return;
+              }
+              else if (!shallow && isRef(value) && !isRef(newVal)) {
+                  value.value = newVal;
+                  return;
+              }
+              else {
+                  val = newVal;
+              }
+              childOb = !shallow && observe(newVal, false, mock);
+              {
+                  dep.notify({
+                      type: "set" /* TriggerOpTypes.SET */,
+                      target: obj,
+                      key: key,
+                      newValue: newVal,
+                      oldValue: value
+                  });
+              }
+          }
+      });
+      return dep;
+  }
+```
+挺长的一段哈，这里给data里面的每一个属性都定义了这样的一个getter和setter，这里的getter和setter目前只是定义在这里了，但是记住这里的getter和setter，因为这两个函数的调用实际上是在你的项目代码跑起来的时候，才回去执行的，当你的data里面的某一个属性被访问或被赋值的时候，那么就会触发这里的getter或setter方法了。
+1.首先这里要明白的就是这个getter和setter执行的时机，这个还是挺关键的。
+2.当你再项目中读取data里面的某个属性的时候，比如你在项目中data里面定义了一个xxx属性：
+```
+data(){
+    return {
+        xxx:''
+    }
+}
+```
+当你在读取this.xxx的时候，就会触发这里关于xxx的getter方法，但是随着我们getter方法的执行，我们发现了一个Dep.target这个东西，在if条件里面判断了Dep.target这个，
+Dep.target这是个什么东西呢，这个Dep.target里面实际上存的就是当前环境正在生效的watcher。
+但是我们讲到目前位置，似乎是没看到哪里有往这个Dep.target里面存入watcher啊。
+解析：其实当我们项目运行起来的时候，是不是就等于是vue底层的初始化实际上是已经初始化完成了，在初始化的时候，实际上走了这么一段代码：
+```
+vm.$mount(vm.$options.el);
+```,
+而这个$mount里面执行了mountComponent，mountComponent这个方法里面有段代码
+```
+new Watcher(vm, updateComponent, noop, watcherOptions, true /* isRenderWatcher */);//这里就是在初始化的时候，执行的第一个watcher，这个watcher也就是网上众多文档里面写的渲染watcher
+```
+因为new Watcher的时候，watcher这个构造函数是会去执行this.get()这个方法，而这个get方法里面就会把当前这个wathcer实例通过pushTarget这个方法，把当前执行栈里面的wathcer指向当前这个渲染watcher，至此我们前面data里面提到的那个Dep.target就是指的这个渲染watcher。
+```
+function pushTarget(target) { //target就是指当前推入的watcher，vm.$mount(vm.$options.el);执行的时候，这个target就是指定的渲染watcher
+    targetStack.push(target);
+    Dep.target = target;
+}
+```
+这个渲染watcher不同于computed Watcher（计算属性用到的watcher）和watch watcher（watch里面用到的watcher）,这个渲染watcher仅此一家，是全局的唯一的一个watcher，当后面data里面的某个属性值或者computed里面的计算属性发生改变的时候，就会通过这个watcher里面传入的回调方法去更新dom树上面的这些属性对应的变量
+前面提到了在渲染watcher里面传入了一个回调方法，这个方法是watcher的第二个参数
+```
+//new Watcher(vm, updateComponent, noop, watcherOptions, true /* isRenderWatcher */);
+updateComponent = function () {
+    vm._update(vm._render(), hydrating);
+};
+```
+当data里面的数据发生改变的时候，就会直接调用updateComponent，updateComponent方法是在new Watcher的时候，通过判断expOrFn是否是个函数，传递给了this.getter这个属性，随后执行了Watcher里面的实例方法run，run里面this.get()方法回去执行this.getter()，从而才执行的updateComponent这个方法，这里是为了把updateComponent方法如何被执行的来龙去脉给分析清楚,避免后面对这里为什么执行而产生疑问
+
+
+
+
 
