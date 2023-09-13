@@ -359,7 +359,70 @@ updateComponent = function () {
     vm._update(vm._render(), hydrating);
 };
 ```
-当data里面的数据发生改变的时候，就会直接调用updateComponent，updateComponent方法是在new Watcher的时候，通过判断expOrFn是否是个函数，传递给了this.getter这个属性，随后执行了Watcher里面的实例方法run，run里面this.get()方法回去执行this.getter()，从而才执行的updateComponent这个方法，这里是为了把updateComponent方法如何被执行的来龙去脉给分析清楚,避免后面对这里为什么执行而产生疑问
+当data里面的数据发生改变的时候，就会直接调用updateComponent，updateComponent方法是在new Watcher的时候，通过判断expOrFn是否是个函数，传递给了this.getter这个属性，随后执行了Watcher里面的实例方法run，run里面this.get()方法回去执行this.getter()，从而才执行的updateComponent这个方法，这里是为了把updateComponent方法如何被执行的来龙去脉给分析清楚,避免后面对这里为什么执行而产生疑问.
+
+#### 3.watch watcher(options选项里面的那个watch)
+这个watch底层也是用之前那个watcher实现的,这里称之为watch watcher,这个watcher是在initData执行过后再执行的initWatch(vm)
+上代码：
+```
+function initWatch(vm, watch) {
+      for (var key in watch) {
+          var handler = watch[key];
+          if (isArray(handler)) {
+              for (var i = 0; i < handler.length; i++) {
+                  createWatcher(vm, key, handler[i]);
+              }
+          }
+          else {
+              createWatcher(vm, key, handler);
+          }
+      }
+  }
+function createWatcher(vm, expOrFn, handler, options) {
+    if (isPlainObject(handler)) {
+        options = handler;
+        handler = handler.handler;
+    }
+    if (typeof handler === 'string') {
+        handler = vm[handler];
+    }
+    return vm.$watch(expOrFn, handler, options);
+}
+```
+initwatch里面的入参watch就是我们options里面监听了很多个数据变化的watch对象
+initWatch这里循环获取了watch对象里面的所有被监听的属性（实际上就是watch里面写的所有需要被监听的数据源）
+将watch里面的每个数据源和回调函数handler进行绑定，传入createWatcher，key和handler一起传入vm.$watch:
+```
+Vue.prototype.$watch = function (expOrFn, cb, options) {
+    var vm = this;
+    if (isPlainObject(cb)) {
+        return createWatcher(vm, expOrFn, cb, options);
+    }
+    options = options || {};
+    options.user = true;
+    var watcher = new Watcher(vm, expOrFn, cb, options);
+    if (options.immediate) {
+        var info = "callback for immediate watcher \"".concat(watcher.expression, "\"");
+        pushTarget();
+        invokeWithErrorHandling(cb, vm, [watcher.value], vm, info);
+        popTarget();
+    }
+    return function unwatchFn() {
+        watcher.teardown();
+    };
+};
+```
+这里对应一下传参：
+这里的expOrFn就是watch里面的key;
+cb对应的就是handler;
+options这里没有传，所以就不管了
+在这个$watch里面，对每个key都进行了至少一次new Watcher(vm, expOrFn, cb, options),因为同一个key可能handler是一个数组的形式，所以会对每个key的每个handler都进行一次new Watcher
+当这些被监听的数据源发生改变的时候，就会执行执行之前的那个watcher里面的get方法，通过get方法拿到当前数据源的最新的值，然后将值传给那个cb，也就是handler回调函数，这样我们在业务代码里面就能获取得到当前最新的值以及之前的值了。
+
+
+
+
+
 
 
 
