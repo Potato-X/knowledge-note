@@ -339,11 +339,13 @@ Dep.target这是个什么东西呢，这个Dep.target里面实际上存的就是
 解析：其实当我们项目运行起来的时候，是不是就等于是vue底层的初始化实际上是已经初始化完成了，在初始化的时候，实际上走了这么一段代码：
 ```
 vm.$mount(vm.$options.el);
-```,
+```
 而这个$mount里面执行了mountComponent，mountComponent这个方法里面有段代码
 ```
-new Watcher(vm, updateComponent, noop, watcherOptions, true /* isRenderWatcher */);//这里就是在初始化的时候，执行的第一个watcher，这个watcher也就是网上众多文档里面写的渲染watcher
+new Watcher(vm, updateComponent, noop, watcherOptions, true /* isRenderWatcher */);//这里就是在初始化的时候，执行的第一个watcher，这个
 ```
+watcher也就是网上众多文档里面写的渲染watcher
+
 因为new Watcher的时候，watcher这个构造函数是会去执行this.get()这个方法，而这个get方法里面就会把当前这个wathcer实例通过pushTarget这个方法，把当前执行栈里面的wathcer指向当前这个渲染watcher，至此我们前面data里面提到的那个Dep.target就是指的这个渲染watcher。
 ```
 function pushTarget(target) { //target就是指当前推入的watcher，vm.$mount(vm.$options.el);执行的时候，这个target就是指定的渲染watcher
