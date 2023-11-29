@@ -1,6 +1,7 @@
 # webpack优化
 
-## 1.解析文件时，缩小文件查询范围
+## 构建速度
+### 1.解析文件时，缩小文件查询范围
 
 当我们使用loader去解析不同文件的时候，很可能我们只需要解析我们自己写的那些内容，但是如果我们不去给loader解析限定一个解析范围，它甚至能解析到module里面去，这样的话随着我们项目文件和项目依赖的剧增，还是会影响我们loader解析的速度，当然也就是间接影响了构建速度。
 
@@ -22,7 +23,7 @@ module.exports={
 }
 ```
 
-## 2.dll（动态链接库）分包
+### 2.dll（动态链接库）分包 webpack5建议直接使用cache
 在项目构建的时候，实际上很多时候项目里面有很多代码我们是不会去修改的，比如那些三方依赖或者框架源码vue,vue-router,vuex,element-ui这些
 这些东西如果我们每次构建的时候，都要构建一遍的话，实际上还是很影响构建速度的
 采用dll分包的原因在于包含大量复用模块的动态链接库只需要编译一次，在之后的构建过程中被动态链接库包含的模块将不会在重新编译，而是直接使用动态链接库中的代码。 由于动态链接库中大多数包含的是常用的第三方模块，例如 vue,vue-router,vuex,element-ui只要不升级这些模块的版本，动态链接库就不用重新编译。
@@ -69,7 +70,7 @@ module.exports={
 ```
 然后执行webpack构建命令就行了，因为已经构建了dll.js文件，所以webpack构建的时候直接引用了dll.js里面的代码，从而减少了再次编译构建那几个三方依赖的时间，大大提高的构建速度
 
-## 3.happypack(快乐的打包😀)
+### 3.happypack(快乐的打包😀,但现在好像没维护了),现在用TerserWebpackPlugin，这个是专门针对js的打包压缩，可以开启多进程
 官方原话:HappyPack makes initial webpack builds faster by transforming files in parallel(happypack通过并行处理文件从而加快webpack的构建速度).
 针对大量的不同类型的文件，loader对不同文件类型的解释，在webpack里面本来都是单一进程的，这样的话会极大的影响webpack的构建速度（webpack:我得一个一个的对每个文件单独做啊，我目前人就只有这么一个人，我也很累）
 而happypack就让webpack快乐了起来，因为它能让webpack拥有并行处理的能力，happypack能把任务分给许多子进程，然后每个子进程把分配到自己的任务做完后，把结果给到webpack主进程,js本身是单线程语言，所以是把分给子进程去做而不是线程；因为增加了子进程，所以webpack里loader对文件的解析更快了（因为都是并行的），从而加快了webpack的构建速度，webpack快乐了，我们也就快乐了，大家快乐才是真的快乐😊
@@ -115,7 +116,7 @@ threads 代表开启几个子进程去处理这一类型的文件，默认是3�
 verbose 是否允许 HappyPack 输出日志，默认是 true。
 threadPool 代表共享进程池，即多个 HappyPack 实例都使用同一个共享进程池中的子进程去处理任务，以防止资源占用过多
 
-## HappyPack原理
+#### HappyPack原理
 在整个 Webpack 构建流程中，最耗时的流程可能就是 Loader 对文件的转换操作了，因为要转换的文件数据巨多，而且这些转换操作都只能一个个挨着处理。 HappyPack 的核心原理就是把这部分任务分解到多个进程去并行处理，从而减少了总的构建时间。
 
 从前面的使用中可以看出所有需要通过 Loader 处理的文件都先交给了 happypack/loader 去处理，收集到了这些文件的处理权后 HappyPack 就好统一分配了。
@@ -125,6 +126,32 @@ threadPool 代表共享进程池，即多个 HappyPack 实例都使用同一个�
 核心调度器的逻辑代码在主进程中，也就是运行着 Webpack 的进程中，核心调度器会把一个个任务分配给当前空闲的子进程，子进程处理完毕后把结果发送给核心调度器，它们之间的数据交换是通过进程间通信 API 实现的。
 
 核心调度器收到来自子进程处理完毕的结果后会通知 Webpack 该文件处理完毕。
+
+### 4.使用cache 缓存生成的 webpack 模块和 chunk，来改善构建速度
+
+cache设置缓存有两种模式，一种是type为memory的时候，使用内存进行缓存，另一种是type为filesystem的时候，使用磁盘文件进行缓存,默认是type为memory，但是生产模式下，会被禁用。
+这里要提一句：我们有时候会见到cache-loader这么个东西，这个东西跟webpack5里面的cache有啥关系呢？
+解析：
+与 Webpack 5 自带的持久化缓存不同，cache-loader 仅 Loader 执行结果有效，缓存范围与深度不如内置的缓存功能，所以性能收益相对较低，但在 Webpack 4 版本下已经不失为一种简单而有效的性能优化手段。所以在webpack5里面我们则采用上位替代（内置的cache）
+```
+module.exports={
+    cache:true
+}//等同于
+module.exports={
+    cache:{
+        type:'memory'
+    }
+}
+```
+当cache的type设置为filesystem的时候，开启更多的配置
+
+## 构建体积
+
+### 1.TerserWebpackPlugin 打包构建
+TerserWebpackPlugin是webpack5自带内置的一个插件，但是如果是想更加自定义配置TerserWebpackPlugin选项，则还是需要下载这个插件下来，然后进行修改，该插件也可以通过给parallel设置为true,将压缩js文件的操作改为并行处理，加快构建速度
+
+### 2.压缩css体积，提取css
+
 
 
 
