@@ -87,12 +87,13 @@ interface CSSModulesOptions {
 - localsConvention选项
 * 作用：就是规范样式类名的
 localsConvention类型为string时，有如下选项配置
-|options|type|描述|
+
+|options   |type  |描述|
 -------|----|-----
-camelCase|{String}|将样式新增一个驼峰式(例如.footerContent)
-camelCaseOnly|{String}|将当前dash样式改成驼峰式
-dashes|{String}|将样式新增一个dash(就是样式名中间有个'-',例如.footer-content)
-dashesOnly| {String} |样式只有一个dash(就是样式名中间有个'-',例如.footer-content)
+camelCase|String|将样式新增一个驼峰式(例如.footerContent)
+camelCaseOnly|String|将当前dash样式改成驼峰式
+dashes|String|将样式新增一个dash(就是样式名中间有个'-',例如.footer-content)
+dashesOnly|String|样式只有一个dash(就是样式名中间有个'-',例如.footer-content)
 
 - scopeBehaviour选项
 作用：开启是否对css进行模块化，global则表示关闭模块化
