@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<style>
+    .box {
+        height: 200px;
+        width: 200px;
+        text-align: center;
+        line-height: 200px;
+        font-size: 20px;
+        font-weight: 600;
+        transition: all linear .5s;
+    }
+
+    .bg1 {
+        background-color: aqua;
+    }
+
+    .bg2 {
+        background-color: burlywood;
+    }
+
+    .bg3 {
+        background-color: cornflowerblue;
+    }
+</style>
+
+<body>
+    <div id="parent"></div>
+    <script src="./js/utils_tool/drag.js"></script>
+    <script>
+        let text = ['box1', 'box2', 'box3']
+        function render(data = [],el) {
+            let fragment = document.createDocumentFragment()
+            data.forEach((item, index) => {
+                let div = document.createElement('div')
+                div.classList.add('bg' + Number(index+1))
+                div.classList.add('box')
+                div.innerText = item
+                div.setAttribute('selfdata',item)
+                fragment.appendChild(div)
+            })
+            document.querySelector(el).appendChild(fragment)
+        }
+        render(text,"#parent")
+        let dragable = new Dragable('.box',text)
+    </script>
+
+</body>
+
+</html>
