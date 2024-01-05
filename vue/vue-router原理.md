@@ -304,3 +304,11 @@ render (_, { props, children, parent, data }) {
   return h(component, data, children) //然后将该组件渲染出来
 }
 ```
+
+## 总结
+* 就是当注入插件的时候，给全局vue混入一个beforeCreate钩子函数
+* 然后执行创建router实例，创建router实例的过程中，根据传入的mode进行判断执行不同的路由拦截处理逻辑，同时将当前路由信息_route代理到vue上面作为一个响应式属性进行监听
+* 根据mode的不同，分为hashHistory和html5History这两个方法去处理，在拦截路由变化的时候，hashhistroy多了个环境兼容判断，如果支持pushstate这个属性，则采用popstate这个路由监听事件进行拦截，否则就采用hashchange来进行拦截；html5History则直接采用popstate进行拦截
+* 具体的路由匹配是通过将路由配置列表进行平铺（存在路由嵌套的情况），方便后续根据逐级向上查找routerview组件所在的层级得到对应的路由渲染组件
+* 当找到匹配的路由后，将匹配的路由通过pushstate方法存入到浏览器路由栈里面，接着就是通知页面进行路由组件的渲染（通过给前面代理在vue上面的响应式属性（路由信息）进行赋值达到通知更新页面视图的目的）
+* routerView是负责更新路由组件的一个高阶组件，当前面开始通知视图更新的时候，vue内部的响应式机制就会触发，使得routerView根据匹配到的路由组件通过render函数渲染出来
