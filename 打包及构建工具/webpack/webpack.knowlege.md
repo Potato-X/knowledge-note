@@ -158,3 +158,8 @@ module.exports={
 ### splitchunks(代码分割)
 
 
+### webpack打包流程及其原理
+
+直接上链接: [这是篇比较不错的文章，精简版webpack手撸，便于快速了解学习webpack的打包流程及其原理](https://juejin.cn/post/6844904038543130637#heading-9)
+
+

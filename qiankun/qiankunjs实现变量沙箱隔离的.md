@@ -103,11 +103,11 @@ export default class LegacySandbox implements SandBox {
   private setWindowProp(prop: PropertyKey, value: any, toDelete?: boolean) {
     if (value === undefined && toDelete) {
       // eslint-disable-next-line no-param-reassign
-      delete (this.globalContext as any)[prop];
+      delete (this.globalContext as any)[prop]; //删除新增的数据
     } else if (isPropConfigurable(this.globalContext, prop) && typeof prop !== 'symbol') {
-      Object.defineProperty(this.globalContext, prop, { writable: true, configurable: true });
+      Object.defineProperty(this.globalContext, prop, { writable: true, configurable: true }); //并且将全局window对象属性修改为可编辑，可查看
       // eslint-disable-next-line no-param-reassign
-      (this.globalContext as any)[prop] = value; //
+      (this.globalContext as any)[prop] = value; //将数据进行还原
     }
   }
 
